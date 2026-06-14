@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoWallet - Dashboard de Gestión</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app" v-cloak>
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo-icon"></div>
+                <h1>CryptoWallet</h1>
+            </div>
+            <nav class="menu">
+                <button :class="{activo: pantalla === 'cliente'}" @click="pantalla = 'cliente'">
+                    Nuevo Cliente
+                </button>
+                <button :class="{activo: pantalla === 'compra'}" @click="abrirMovimiento('compra')">
+                    Nueva Compra
+                </button>
+                <button :class="{activo: pantalla === 'venta'}" @click="abrirMovimiento('venta')">
+                    Nueva Venta
+                </button>
+                <button :class="{activo: pantalla === 'historial'}" @click="abrirHistorial">
+                    Historial de Movimientos
+                </button>
+            </nav>
+        </aside>
+
+        <main class="content">
+            <section class="panel-card" v-if="pantalla === 'cliente'">
+                <div class="panel-header">
+                    <h2>Registrar nuevo usuario</h2>
+                    <p class="texto-suave">Ingrese los datos correspondientes para dar de alta al cliente en la plataforma.</p>
+                </div>
+
+                <form @submit.prevent="guardarCliente" class="formulario">
+                    <div class="form-group">
+                        <label for="client-name">Nombre y apellido</label>
+                        <input id="client-name" v-model="cliente.name" type="text" placeholder="Ej: Pedro González" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="client-email">Correo electrónico</label>
+                        <input id="client-email" v-model="cliente.email" type="email" placeholder="nombre@ejemplo.com" required>
+                    </div>
+
+                    <button class="btn btn-primary" type="submit" :disabled="cargando">
+                        {{ cargando ? 'Guardando...' : 'Registrar Cliente' }}
+                    </button>
+                </form>
+            </section>
+
+            <section class="panel-card" v-if="pantalla === 'compra' || pantalla === 'venta'">
+                <div class="panel-header">
+                    <h2>{{ pantalla === 'compra' ? 'Registrar Compra de Activos' : 'Registrar Venta de Activos' }}</h2>
+                    <p class="texto-suave">Los montos en ARS se cotizan en tiempo real mediante la API de CriptoYa.</p>
+                </div>
+
+                <form @submit.prevent="guardarTransaccion" class="formulario">
+                    <div class="form-group">
+                        <label>Cliente titular</label>
+                        <select v-model.number="transaccion.client_id" required>
+                            <option value="0" disabled>Seleccione un cliente de la lista</option>
+                            <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">
+                                {{ cliente.name }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Activo digital (Criptomoneda)</label>
+                        <div class="crypto-selector-dynamic">
+                            <button type="button"
+                                    :class="['btn-crypto', 'btc', { seleccionado: transaccion.crypto_code === 'bitcoin' }]"
+                                    @click="transaccion.crypto_code = 'bitcoin'">
+                                <div class="crypto-icon">₿</div>
+                                <span class="crypto-name">Bitcoin</span>
+                            </button>
+                            <button type="button"
+                                    :class="['btn-crypto', 'usdc', { seleccionado: transaccion.crypto_code === 'usdc' }]"
+                                    @click="transaccion.crypto_code = 'usdc'">
+                                <div class="crypto-icon">$</div>
+                                <span class="crypto-name">USD Coin</span>
+                            </button>
+                            <button type="button"
+                                    :class="['btn-crypto', 'eth', { seleccionado: transaccion.crypto_code === 'ethereum' }]"
+                                    @click="transaccion.crypto_code = 'ethereum'">
+                                <div class="crypto-icon">Ξ</div>
+                                <span class="crypto-name">Ethereum</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Cantidad de unidades</label>
+                        <input v-model.number="transaccion.crypto_amount" type="number" min="0.00000001" step="0.00000001" placeholder="0.00000000" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Fecha y hora de operación</label>
+                        <input v-model="transaccion.datetime" type="datetime-local" required>
+                    </div>
+
+                    <button class="btn btn-primary" type="submit" :disabled="cargando">
+                        {{ cargando ? 'Procesando...' : (pantalla === 'compra' ? 'Ejecutar Compra' : 'Ejecutar Venta') }}
+                    </button>
+                </form>
+            </section>
+
+            <section class="panel-card" v-if="pantalla === 'historial'">
+                <div class="panel-header flex-header">
+                    <div>
+                        <h2>Historial de transacciones</h2>
+                        <p class="texto-suave">Listado auditable de operaciones registradas.</p>
+                    </div>
+                    <div class="filtro-box">
+                        <select v-model.number="clienteHistorial">
+                            <option value="0">Todos los clientes</option>
+                            <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">
+                                {{ cliente.name }}
+                            </option>
+                        </select>
+                        <button class="btn btn-secondary" @click="cargarTransacciones">Filtrar</button>
+                    </div>
+                </div>
+
+                <div class="tabla-contenedor">
+                    <table class="tabla-custom">
+                        <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Operación</th>
+                                <th>Activo</th>
+                                <th class="text-right">Cantidad</th>
+                                <th class="text-right">Monto Neto</th>
+                                <th>Fecha</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="mov in transacciones" :key="mov.id">
+                                <td class="font-medium">{{ mov.client_name }}</td>
+                                <td>
+                                    <span :class="['badge', mov.action === 'purchase' ? 'badge-compra' : 'badge-venta']">
+                                        {{ mov.action === 'purchase' ? 'Compra' : 'Venta' }}
+                                    </span>
+                                </td>
+                                <td class="text-uppercase font-bold">{{ mov.crypto_code.substring(0,3) }}</td>
+                                <td class="text-right font-mono">{{ mov.crypto_amount }}</td>
+                                <td class="text-right font-mono font-bold text-success">$ {{ formatoDinero(mov.money) }}</td>
+                                <td class="text-muted">{{ formatoFecha(mov.datetime) }}</td>
+                                <td>
+                                    <div class="acciones-btn">
+                                        <button class="btn-action" @click="verTransaccion(mov)">Ver</button>
+                                        <button class="btn-action" @click="editarTransaccion(mov)">Editar</button>
+                                        <button class="btn-action btn-delete" @click="borrarTransaccion(mov)">Borrar</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr v-if="transacciones.length === 0">
+                                <td colspan="7" class="tabla-vacia">
+                                    No se encontraron movimientos registrados para este criterio.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+
+        <div class="modal-overlay" v-if="modal.visible" @click.self="cerrarModal">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>{{ modal.modo === 'ver' ? 'Detalle de la Operación' : 'Modificar Registro Histórico' }}</h3>
+                    <button class="close-x" @click="cerrarModal">&times;</button>
+                </div>
+
+                <div v-if="modal.modo === 'ver'" class="modal-body detalle-lista">
+                    <div class="detalle-item"><span>ID Transacción:</span> <strong>#{{ modal.transaccion.id }}</strong></div>
+                    <div class="detalle-item"><span>Cliente:</span> <strong>{{ modal.transaccion.client_name }}</strong></div>
+                    <div class="detalle-item">
+                        <span>Tipo:</span>
+                        <span :class="['badge', modal.transaccion.action === 'purchase' ? 'badge-compra' : 'badge-venta']">
+                            {{ modal.transaccion.action === 'purchase' ? 'Compra' : 'Venta' }}
+                        </span>
+                    </div>
+                    <div class="detalle-item"><span>Criptoactivo:</span> <strong class="text-uppercase">{{ modal.transaccion.crypto_code }}</strong></div>
+                    <div class="detalle-item"><span>Cantidad:</span> <strong class="font-mono">{{ modal.transaccion.crypto_amount }}</strong></div>
+                    <div class="detalle-item"><span>Evaluación:</span> <strong class="font-mono text-success">$ {{ formatoDinero(modal.transaccion.money) }}</strong></div>
+                    <div class="detalle-item"><span>Fecha Registro:</span> <strong class="text-muted">{{ formatoFecha(modal.transaccion.datetime) }}</strong></div>
+                </div>
+
+                <form v-else @submit.prevent="guardarEdicion" class="modal-body formulario">
+                    <div class="form-group">
+                        <label>Titular</label>
+                        <select v-model.number="modal.transaccion.client_id">
+                            <option v-for="cliente in clientes" :key="cliente.id" :value="cliente.id">
+                                {{ cliente.name }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Tipo de movimiento</label>
+                        <select v-model="modal.transaccion.action">
+                            <option value="purchase">Compra</option>
+                            <option value="sale">Venta</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Criptoactivo</label>
+                        <div class="crypto-selector-dynamic">
+                            <button type="button"
+                                    :class="['btn-crypto', 'btc', { seleccionado: modal.transaccion.crypto_code === 'bitcoin' }]"
+                                    @click="modal.transaccion.crypto_code = 'bitcoin'">
+                                <div class="crypto-icon">₿</div>
+                                <span class="crypto-name">Bitcoin</span>
+                            </button>
+                            <button type="button"
+                                    :class="['btn-crypto', 'usdc', { seleccionado: modal.transaccion.crypto_code === 'usdc' }]"
+                                    @click="modal.transaccion.crypto_code = 'usdc'">
+                                <div class="crypto-icon">$</div>
+                                <span class="crypto-name">USDC</span>
+                            </button>
+                            <button type="button"
+                                    :class="['btn-crypto', 'eth', { seleccionado: modal.transaccion.crypto_code === 'ethereum' }]"
+                                    @click="modal.transaccion.crypto_code = 'ethereum'">
+                                <div class="crypto-icon">Ξ</div>
+                                <span class="crypto-name">Ethereum</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Cantidad</label>
+                        <input v-model.number="modal.transaccion.crypto_amount" type="number" step="0.00000001" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Importe Fijado (ARS)</label>
+                        <input v-model.number="modal.transaccion.money" type="number" step="0.01" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Fecha Modificación</label>
+                        <input v-model="modal.transaccion.datetimeEditada" type="datetime-local" required>
+                    </div>
+
+                    <button class="btn btn-primary w-full" type="submit" :disabled="cargando">
+                        {{ cargando ? 'Actualizando...' : 'Confirmar Cambios' }}
+                    </button>
+                </form>
+
+                <div class="modal-footer" v-if="modal.modo === 'ver'">
+                    <button class="btn btn-secondary" @click="cerrarModal">Cerrar Ventana</button>
+                </div>
+            </div>
+        </div>
+
+        <transition name="toast-fade">
+            <div class="toast-notification" v-if="mensaje">{{ mensaje }}</div>
+        </transition>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
