@@ -6,7 +6,7 @@ Hola! Soy Joaquin y este proyecto fue desarrollado como trabajo final para la ma
 
 La aplicacion permite registrar clientes y administrar operaciones de compra y venta de criptomonedas, manteniendo un historial de movimientos y calculando automaticamente los montos en pesos argentinos utilizando cotizaciones obtenidas desde la API de CriptoYa.
 
-La idea del sistema es simular una herramienta sencilla para llevar el control de una cartera de criptomonedas de distintos clientes, cumpliendo con los requisitos planteados en la consigna de la materia.
+Originalmente el frontend estaba hecho utilizando Vue por CDN, pero posteriormente lo migre a una estructura basada en **Vue 3 + Vite** para organizar mejor el codigo y trabajar con componentes de una forma mas ordenada.
 
 ---
 
@@ -14,13 +14,15 @@ La idea del sistema es simular una herramienta sencilla para llevar el control d
 
 ### Backend
 
-* ASP.NET Web API
+* ASP.NET Core Web API
 * Entity Framework Core
 
 ### Frontend
 
 * Vue.js 3
+* Vite
 * HTML
+* CSS
 * JavaScript
 
 ### Base de datos
@@ -35,9 +37,11 @@ La idea del sistema es simular una herramienta sencilla para llevar el control d
 
 ## Algunas decisiones del desarrollo
 
-Para este proyecto utilice **SQLite** como motor de base de datos. Durante la carrera generalmente trabajamos con SQL Server, pero quise aprovechar este trabajo para probar una algo diferente por curiosidad y para aprender un poco mas sobre otra tecnologia.
+Para este proyecto utilice **SQLite** como motor de base de datos. Durante la carrera generalmente trabajamos con SQL Server, pero quise aprovechar este trabajo para probar algo diferente por curiosidad y aprender un poco mas sobre otra tecnologia.
 
-Ademas, tuvo sus beneficios ya que SQLite resulta practico para este proyecto porque no requiere instalar ni configurar un servidor de base de datos, lo que facilita ejecutar y probar la aplicacion.
+Ademas, SQLite me parecio una buena opcion porque no requiere instalar ni configurar un servidor de base de datos, lo que facilita bastante ejecutar y probar el proyecto.
+
+Tambien migre el frontend a **Vite** para trabajar con componentes `.vue` y tener una estructura mas organizada. Una vez compilado, el frontend se sirve directamente desde ASP.NET, por lo que toda la aplicacion puede ejecutarse desde un unico proyecto.
 
 Para obtener las cotizaciones de las criptomonedas utilice la API de **CriptoYa**, consultando los precios del exchange **SatoshiTango**. De esta forma, los valores de compra y venta se calculan utilizando informacion real al momento de registrar cada operacion.
 
@@ -52,10 +56,10 @@ Para obtener las cotizaciones de las criptomonedas utilice la API de **CriptoYa*
 
 ### Operaciones de criptomonedas
 
-* Registro de compras.
-* Registro de ventas.
+* Registro de compras utilizando el valor **ask**.
+* Registro de ventas utilizando el valor **bid**.
 * Validacion para impedir ventas superiores al saldo disponible.
-* Calculo automatico del importe en pesos argentinos.
+* Calculo automatico del importe en pesos argentinos desde el backend.
 
 ### Historial de movimientos
 
@@ -65,24 +69,32 @@ Para obtener las cotizaciones de las criptomonedas utilice la API de **CriptoYa*
 * Edicion de movimientos.
 * Eliminacion de movimientos.
 
-### Criptomonedas utilizadas
+---
 
-El sistema trabaja con tres criptomonedas:
+## Estructura del proyecto
 
-* Bitcoin (BTC)
-* Ethereum (ETH)
-* USDC
+```text
+Backend/
+└── CriptoCarteraApi/
+
+Frontend/
+```
+
+* `Backend/CriptoCarteraApi/`: API desarrollada en ASP.NET Core junto con la carpeta `wwwroot` donde se aloja la version compilada del frontend.
+* `Frontend/`: proyecto Vue 3 + Vite utilizado durante el desarrollo.
 
 ---
 
 ## Como ejecutar el proyecto
+
+Al estar el frontend compilado e integrado dentro del backend, solamente es necesario ejecutar la API para utilizar toda la aplicacion.
 
 ### 1. Ejecutar el backend
 
 Ubicarse dentro de:
 
 ```bash
-Backend/CriptoCarteraApi
+cd Backend/CriptoCarteraApi
 ```
 
 Restaurar dependencias:
@@ -91,53 +103,61 @@ Restaurar dependencias:
 dotnet restore
 ```
 
-Iniciar la API:
+Iniciar la aplicacion:
 
 ```bash
 dotnet run
 ```
 
-La aplicacion genera automaticamente la base de datos utilizando Entity Framework.
+### 2. Acceder al sistema
 
-El archivo SQLite se crea localmente como:
+La consola mostrara la URL donde se encuentra ejecutandose la aplicacion.
 
-```bash
+Por ejemplo:
+
+```text
+http://localhost:5147
+```
+
+o
+
+```text
+https://localhost:7001
+```
+
+Al abrir esa direccion en el navegador se cargara automaticamente tanto el frontend como el backend.
+
+### Base de datos
+
+La aplicacion utiliza `EnsureCreated()`, por lo que la base de datos SQLite se genera automaticamente la primera vez que se ejecuta el proyecto.
+
+El archivo generado es:
+
+```text
 cartera_cripto.db
 ```
 
----
-
-### 2. Configurar la URL de la API
-
-Si el backend se ejecuta en un puerto diferente, actualizar la variable:
-
-```javascript
-apiUrl
-```
-
-ubicada en:
-
-```bash
-Frontend/app.js
-```
-
-Por defecto se encuentra configurada como:
-
-```javascript
-apiUrl: "http://localhost:5147"
-```
+No es necesario ejecutar migraciones manualmente para probar la aplicacion.
 
 ---
 
-### 3. Ejecutar el frontend
+## Desarrollo del frontend
 
-Abrir el archivo:
+Si se desea trabajar sobre el codigo fuente del frontend:
 
 ```bash
-Frontend/index.html
+cd Frontend
+npm install
+npm run dev
 ```
 
-en el navegador.
+Una vez realizados los cambios:
+
+```bash
+npm run build
+```
+
+Luego copiar el contenido generado en `dist/` hacia la carpeta `Backend/CriptoCarteraApi/wwwroot/`.
 
 ---
 
@@ -164,17 +184,8 @@ DELETE  /transactions/{id}
 
 ---
 
-## Consideraciones
-
-* Las compras utilizan el valor **ask** obtenido desde CriptoYa.
-* Las ventas utilizan el valor **bid**.
-* Los montos en pesos se calculan en el backend para evitar inconsistencias.
-* No se permite vender mas criptomonedas de las que posee un cliente.
-
----
-
 ## Contexto academico
 
 Este proyecto fue realizado como trabajo final individual para la materia **Programacion III** de la **Tecnicatura Universitaria en Programacion**.
 
-El objetivo principal fue aplicar conceptos de desarrollo full stack utilizando Vue.js, ASP.NET, bases de datos SQL, APIs REST y consumo de servicios externos.
+El objetivo principal fue aplicar conceptos de desarrollo full stack utilizando Vue.js, ASP.NET Core, bases de datos SQL, APIs REST y consumo de servicios externos.

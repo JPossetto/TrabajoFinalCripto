@@ -35,14 +35,21 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Esto crea la base si todavia no existe, asi no hay que pelearse tanto con migraciones.
+// esto crea la base si todavia no existe, asi no hay que pelearse tanto con migraciones.
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     context.Database.EnsureCreated();
 }
 
+// habilita que la api pueda leer archivos comunes como el index.html, para que el cliente pueda manejar las rutas del frontend
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseCors("PermitirTodo");
 app.MapControllers();
+
+// si entra a una ruta que no es de la api, le devolvemos el index.html para que el cliente maneje la ruta (esto es para que funcione el router del frontend)
+app.MapFallbackToFile("index.html");
 
 app.Run();

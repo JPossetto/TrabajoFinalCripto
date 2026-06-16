@@ -1,6 +1,30 @@
+# esto es lo mismo que estaba en el anterior ignore para el asp.net core y sqlite
 bin/
 obj/
 .vs/
 *.user
 *.db
-node_modules/
+
+# mudando todo tengo que unificar tambien los .gitignore (Vue / Vite)
+Frontend/node_modules/
+Frontend/dist/
+Frontend/dist-ssr/
+Frontend/coverage/
+Frontend/.eslintcache
+Frontend/.vscode/*
+!Frontend/.vscode/extensions.json
+Frontend/cypress/videos/
+Frontend/cypress/screenshots/
+Frontend/__screenshots__/
+
+# archivos temporales y logs del front
+Frontend/logs
+Frontend/*.log
+Frontend/npm-debug.log*
+Frontend/yarn-debug.log*
+Frontend/yarn-error.log*
+Frontend/pnpm-debug.log*
+Frontend/lerna-debug.log*
+Frontend/*.local
+Frontend/*.tsbuildinfo
+Frontend/*.timestamp-*-*.mjs
